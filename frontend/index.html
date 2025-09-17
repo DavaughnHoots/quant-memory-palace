@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Palace - 3D Knowledge Navigator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: background 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Header Controls */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+        }
+
+        .dark-mode .header {
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        /* Search Bar */
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            margin: 0 30px;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 12px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .search-bar:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .btn-icon {
+            font-size: 18px;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 120px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .upload-zone:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        .upload-zone.dragover {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            color: white;
+        }
+
+        .upload-text {
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .upload-subtext {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+        }
+
+        /* Document Details Panel */
+        .document-panel {
+            position: fixed;
+            right: -400px;
+            top: 100px;
+            bottom: 30px;
+            width: 380px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            transition: right 0.3s ease;
+            z-index: 99;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode .document-panel {
+            background: rgba(30, 30, 45, 0.95);
+            color: white;
+        }
+
+        .document-panel.active {
+            right: 30px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .dark-mode .panel-title {
+            color: white;
+        }
+
+        .close-panel {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .close-panel:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .document-info {
+            margin-top: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-mode .info-row {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .dark-mode .info-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .dark-mode .info-value {
+            color: white;
+        }
+
+        /* Stats Display */
+        .stats {
+            position: fixed;
+            left: 30px;
+            bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            gap: 30px;
+            z-index: 100;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .stat-value {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Help Modal */
+        .help-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-mode .help-modal {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .help-modal.active {
+            display: block;
+        }
+
+        .help-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .help-content {
+            line-height: 1.6;
+            color: #666;
+        }
+
+        .dark-mode .help-content {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .help-close {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        /* File input hidden */
+        #file-input {
+            display: none;
+        }
+        
+        /* Animations for notifications */
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+        }
+        
+        /* Mode indicators */
+        .mode-indicators {
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 98;
+        }
+        
+        .mode-badge {
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            animation: slideInRight 0.3s ease;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Keyboard shortcuts modal */
+        .shortcuts-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark-mode .shortcuts-modal {
+            background: #1a1a2e;
+            color: white;
+        }
+        
+        .shortcuts-modal.active {
+            display: block;
+        }
+        
+        .shortcuts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .shortcuts-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .shortcuts-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .dark-mode .shortcuts-close {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .shortcuts-close:hover {
+            transform: rotate(90deg);
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .shortcuts-category {
+            margin-bottom: 30px;
+        }
+        
+        .shortcuts-category-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .dark-mode .shortcuts-category-title {
+            color: #8b9fed;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .dark-mode .shortcut-item {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .shortcut-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .dark-mode .shortcut-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .shortcut-description {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+        
+        .shortcut-icon {
+            font-size: 20px;
+        }
+        
+        .shortcut-text {
+            font-size: 15px;
+            color: #333;
+        }
+        
+        .dark-mode .shortcut-text {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .shortcut-key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 36px;
+            padding: 0 12px;
+            background: white;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+        
+        .dark-mode .shortcut-key {
+            background: #2a2a3e;
+            color: white;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .shortcut-key.space {
+            min-width: 80px;
+        }
+        
+        /* Connection Settings Styles */
+        .dark-mode #connection-settings {
+            background: #1e1e2e !important;
+            color: white;
+        }
+        
+        .dark-mode #connection-settings h3 {
+            color: white !important;
+        }
+        
+        .dark-mode #connection-settings label {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        /* Statistics Modal Styles */
+        .dark-mode #stats-modal {
+            background: #1e1e2e !important;
+            color: white;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .dark-mode .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .dark-mode .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🧠</div>
+            <div class="logo-text">Memory Palace</div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-bar" id="search-input" placeholder="Search your knowledge...">
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="filter-btn">
+                <span class="btn-icon">🔽</span>
+                <span>Filter</span>
+            </button>
+            <button class="btn" id="reset-view-btn">
+                <span class="btn-icon">🎯</span>
+                <span>Reset View</span>
+            </button>
+            <button class="btn" id="cluster-view-btn">
+                <span class="btn-icon">🎨</span>
+                <span>Cluster View</span>
+            </button>
+            <button class="btn" id="connections-btn">
+                <span class="btn-icon">🔗</span>
+                <span>Connections</span>
+            </button>
+            <button class="btn" id="stats-btn">
+                <span class="btn-icon">📊</span>
+                <span>Statistics</span>
+            </button>
+            <button class="btn" id="clear-all-btn" style="background: rgba(255, 59, 48, 0.2); border-color: rgba(255, 59, 48, 0.4);">
+                <span class="btn-icon">🗑️</span>
+                <span>Clear All</span>
+            </button>
+            <button class="btn" id="theme-btn">
+                <span class="btn-icon">🌙</span>
+                <span>Dark</span>
+            </button>
+            <button class="btn" id="help-btn">
+                <span class="btn-icon">❓</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Drop files here</div>
+        <div class="upload-subtext">or click to browse</div>
+    </div>
+    <input type="file" id="file-input" multiple accept=".pdf,.txt,.md,.jpg,.jpeg,.png,.mp3,.wav">
+
+    <!-- Document Details Panel -->
+    <div class="document-panel" id="document-panel">
+        <div class="panel-header">
+            <h2 class="panel-title" id="doc-title">Document Details</h2>
+            <button class="close-panel" id="close-panel">✕</button>
+        </div>
+        <div class="document-info" id="document-info"></div>
+    </div>
+
+    <!-- Stats Display -->
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-value" id="doc-count">0</div>
+            <div class="stat-label">Documents</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="cluster-count">0</div>
+            <div class="stat-label">Clusters</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="connection-count">0</div>
+            <div class="stat-label">Connections</div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Processing...</div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="help-modal" id="help-modal">
+        <h2 class="help-title">How to Navigate</h2>
+        <div class="help-content">
+            <p><strong>🖱️ Controls:</strong></p>
+            <ul>
+                <li>Left click + drag: Rotate view</li>
+                <li>Right click + drag: Pan camera</li>
+                <li>Scroll: Zoom in/out</li>
+                <li>Click document: View details</li>
+            </ul>
+            <br>
+            <p><strong>📁 Upload:</strong></p>
+            <p>Drag and drop files or click the upload zone. Supports PDF, images, text, and audio files.</p>
+            <br>
+            <p><strong>🔍 Search:</strong></p>
+            <p>Type to search semantically. The camera will fly to relevant documents.</p>
+            <br>
+            <p><strong>🌈 Visual Cues:</strong></p>
+            <ul>
+                <li>Colors: Different file types</li>
+                <li>Connections: Related documents</li>
+                <li>Clusters: Grouped by content similarity</li>
+            </ul>
+            <br>
+            <p><strong>📐 Shape Legend:</strong></p>
+            <ul>
+                <li>📄 Cube: PDF documents</li>
+                <li>🖼️ Plane: Images</li>
+                <li>💎 Octahedron: Text files</li>
+                <li>🎵 Cylinder: Audio files</li>
+                <li>🎬 Cone: Video files</li>
+                <li>⚪ Sphere: Other files</li>
+            </ul>
+        </div>
+        <button class="help-close" id="help-close">Got it!</button>
+    </div>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay"></div>
+    
+    <!-- Connection Settings Panel -->
+    <div class="connection-settings" id="connection-settings" style="
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        width: 300px;
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        display: none;
+    ">
+        <h3 style="margin: 0 0 20px 0; font-size: 18px; color: #333;">Connection Settings</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #666;">
+                Similarity Threshold: <span id="threshold-value">0.6</span>
+            </label>
+            <input type="range" id="threshold-slider" min="0.5" max="0.95" step="0.05" value="0.6" style="
+                width: 100%;
+                height: 6px;
+                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                border-radius: 3px;
+                outline: none;
+                -webkit-appearance: none;
+            ">
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #666;">
+                Max Connections: <span id="max-connections-value">200</span>
+            </label>
+            <input type="range" id="max-connections-slider" min="10" max="500" step="10" value="200" style="
+                width: 100%;
+                height: 6px;
+                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                border-radius: 3px;
+                outline: none;
+                -webkit-appearance: none;
+            ">
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="apply-connection-settings" style="
+                padding: 8px 20px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            ">Apply Changes</button>
+        </div>
+    </div>
+    
+    <!-- Mode Indicators -->
+    <div class="mode-indicators" id="mode-indicators"></div>
+    
+    <!-- Statistics Modal -->
+    <div class="stats-modal" id="stats-modal" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        z-index: 1001;
+        display: none;
+        overflow-y: auto;
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h2 style="margin: 0; font-size: 28px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">📊 Memory Palace Statistics</h2>
+            <button id="stats-close" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(0, 0, 0, 0.1); border: none; cursor: pointer; font-size: 20px;">✕</button>
+        </div>
+        
+        <div id="stats-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            <!-- Stats will be dynamically inserted here -->
+        </div>
+    </div>
+    
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="shortcuts-modal" id="shortcuts-modal">
+        <div class="shortcuts-header">
+            <h2 class="shortcuts-title">⌨️ Keyboard Shortcuts</h2>
+            <button class="shortcuts-close" id="shortcuts-close">✕</button>
+        </div>
+        
+        <div class="shortcuts-category">
+            <h3 class="shortcuts-category-title">🎨 Visual Modes</h3>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🔍</span>
+                    <span class="shortcut-text">Deep Dive Mode - Analyze document relationships</span>
+                </div>
+                <span class="shortcut-key">D</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🌌</span>
+                    <span class="shortcut-text">Galaxy Mode - Documents orbit clusters</span>
+                </div>
+                <span class="shortcut-key">G</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">👁️</span>
+                    <span class="shortcut-text">X-Ray Vision - See through documents</span>
+                </div>
+                <span class="shortcut-key">X</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🔥</span>
+                    <span class="shortcut-text">Heat Map - Show density visualization</span>
+                </div>
+                <span class="shortcut-key">H</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">✨</span>
+                    <span class="shortcut-text">Toggle Particle Effects</span>
+                </div>
+                <span class="shortcut-key">P</span>
+            </div>
+        </div>
+        
+        <div class="shortcuts-category">
+            <h3 class="shortcuts-category-title">🎮 Navigation</h3>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">⏸️</span>
+                    <span class="shortcut-text">Pause/Resume animations</span>
+                </div>
+                <span class="shortcut-key space">Space</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🎯</span>
+                    <span class="shortcut-text">Reset camera view</span>
+                </div>
+                <span class="shortcut-key">R</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🔗</span>
+                    <span class="shortcut-text">Toggle connections visibility</span>
+                </div>
+                <span class="shortcut-key">C</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">1️⃣</span>
+                    <span class="shortcut-text">Jump to Cluster 1</span>
+                </div>
+                <span class="shortcut-key">1</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">2️⃣</span>
+                    <span class="shortcut-text">Jump to Cluster 2</span>
+                </div>
+                <span class="shortcut-key">2</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">3️⃣</span>
+                    <span class="shortcut-text">Jump to Cluster 3</span>
+                </div>
+                <span class="shortcut-key">3</span>
+            </div>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">🔍</span>
+                    <span class="shortcut-text">Show all documents (exit cluster view)</span>
+                </div>
+                <span class="shortcut-key">ESC</span>
+            </div>
+        </div>
+        
+        <div class="shortcuts-category">
+            <h3 class="shortcuts-category-title">ℹ️ Help</h3>
+            <div class="shortcut-item">
+                <div class="shortcut-description">
+                    <span class="shortcut-icon">❓</span>
+                    <span class="shortcut-text">Show this help menu</span>
+                </div>
+                <span class="shortcut-key">?</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Deep Dive Styles -->
+    <link rel="stylesheet" href="css/deepdive.css">
+    
+    <!-- Our Scripts -->
+    <script src="js/api.js?v=3"></script>
+    <script src="js/scene.js?v=5"></script>
+    <script src="js/deepdive.js?v=3"></script>
+    
+    <script>
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize 3D scene
+            window.memoryPalace = new MemoryPalaceScene('canvas-container');
+            
+            // Initialize Deep Dive Mode
+            window.deepDiveMode = new DeepDiveMode(window.memoryPalace, API);
+            
+            // Setup double-click handler for Deep Dive
+            document.getElementById('canvas-container').addEventListener('dblclick', (event) => {
+                const rect = event.target.getBoundingClientRect();
+                const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Raycaster to detect clicked document
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2(x, y);
+                raycaster.setFromCamera(mouse, window.memoryPalace.camera);
+                
+                const intersects = raycaster.intersectObjects(
+                    Array.from(window.memoryPalace.documentMeshes.values())
+                );
+                
+                if (intersects.length > 0) {
+                    const clickedMesh = intersects[0].object;
+                    // Find the document ID
+                    for (const [id, mesh] of window.memoryPalace.documentMeshes.entries()) {
+                        if (mesh === clickedMesh) {
+                            console.log('Activating Deep Dive for document:', id);
+                            window.deepDiveMode.activate(id);
+                            break;
+                        }
+                    }
+                }
+            });
+            
+            // Load existing documents
+            await loadDocuments();
+            
+            // Setup keyboard shortcuts
+            setupKeyboardShortcuts();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Update stats
+            updateStats();
+        });
+
+        async function loadDocuments() {
+            showLoading(true);
+            try {
+                // Try simple documents endpoint first (faster)
+                console.log('Loading documents...');
+                const documents = await API.getDocuments(500); // Will use simple endpoint
+                if (documents && documents.length > 0) {
+                    console.log(`Loaded ${documents.length} documents`);
+                    window.memoryPalace.updateDocuments(documents);
+                    updateStats();
+                } else {
+                    console.log('No documents found');
+                    showNotification('No documents found. Upload some files to get started.');
+                }
+            } catch (error) {
+                console.error('Failed to load documents:', error);
+                // Try with even smaller limit as fallback
+                try {
+                    const documents = await API.getDocuments(20);
+                    if (documents && documents.length > 0) {
+                        window.memoryPalace.updateDocuments(documents);
+                        updateStats();
+                        showNotification(`Loaded ${documents.length} documents (limited mode)`);
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback also failed:', fallbackError);
+                    showNotification('Failed to load documents. Please refresh the page.');
+                }
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Don't trigger shortcuts when typing in search
+                if (e.target.tagName === 'INPUT') return;
+                
+                const key = e.key.toLowerCase();
+                
+                switch(key) {
+                    case 'escape':
+                        // Show all documents (exit cluster view)
+                        window.memoryPalace.showAllDocuments();
+                        showNotification('Showing all documents');
+                        break;
+                    
+                    case ' ':
+                        e.preventDefault();
+                        window.memoryPalace.togglePause();
+                        showNotification('Animations ' + (window.memoryPalace.animationsPaused ? 'paused' : 'resumed'));
+                        break;
+                    
+                    case 'g':
+                        if (window.memoryPalace.galaxyMode) {
+                            window.memoryPalace.disableGalaxyMode();
+                            showNotification('Galaxy Mode disabled');
+                            removeModeIndicator('Galaxy Mode');
+                        } else {
+                            window.memoryPalace.enableGalaxyMode();
+                            showNotification('Galaxy Mode enabled - Documents orbiting!');
+                            addModeIndicator('Galaxy Mode', '🌌');
+                        }
+                        break;
+                    
+                    case 'x':
+                        if (window.memoryPalace.xrayMode) {
+                            window.memoryPalace.disableXRayMode();
+                            showNotification('X-Ray Mode disabled');
+                            removeModeIndicator('X-Ray Vision');
+                        } else {
+                            window.memoryPalace.enableXRayMode();
+                            showNotification('X-Ray Mode enabled - See through clusters!');
+                            addModeIndicator('X-Ray Vision', '👁️');
+                        }
+                        break;
+                    
+                    case 'h':
+                        if (window.memoryPalace.heatMapMode) {
+                            window.memoryPalace.disableHeatMapMode();
+                            showNotification('Heat Map disabled');
+                            removeModeIndicator('Heat Map');
+                        } else {
+                            window.memoryPalace.enableHeatMapMode();
+                            showNotification('Heat Map enabled - Density visualization!');
+                            addModeIndicator('Heat Map', '🔥');
+                        }
+                        break;
+                    
+                    case 'r':
+                        window.memoryPalace.resetCamera();
+                        showNotification('Camera reset');
+                        break;
+                    
+                    case 'c':
+                        const isVisible = window.memoryPalace.toggleConnections();
+                        showNotification(isVisible ? 'Connections enabled' : 'Connections hidden');
+                        break;
+                    
+                    case 's':
+                        showStatistics();
+                        break;
+                    
+                    case 'd':
+                        // Deep Dive mode - activate on a random visible document for demo
+                        if (window.deepDiveMode && !window.deepDiveMode.isActive) {
+                            const visibleDocs = Array.from(window.memoryPalace.documentMeshes.entries())
+                                .filter(([id, mesh]) => mesh.visible);
+                            if (visibleDocs.length > 0) {
+                                // Pick the first visible document
+                                const [docId, docMesh] = visibleDocs[0];
+                                console.log('D key pressed - Selected document:', docId);
+                                console.log('D key pressed - Document userData:', docMesh.userData);
+                                console.log('D key pressed - Document cluster:', docMesh.userData.document?.cluster);
+                                window.deepDiveMode.activate(docId);
+                                showNotification('Deep Dive Mode activated! Double-click any document to analyze it.');
+                            }
+                        } else if (window.deepDiveMode && window.deepDiveMode.isActive) {
+                            window.deepDiveMode.deactivate();
+                            showNotification('Deep Dive Mode deactivated');
+                        }
+                        break;
+                    
+                    case 'p':
+                        // Toggle particle effects
+                        if (window.deepDiveMode) {
+                            const enabled = window.deepDiveMode.toggleParticles();
+                            showNotification(`Particle effects ${enabled ? 'enabled' : 'disabled'}`);
+                        }
+                        break;
+                    
+                    case '0':
+                        // Reset cluster view to show all clusters
+                        if (window.memoryPalace.clusterViewMode) {
+                            window.memoryPalace.resetClusterView();
+                            showNotification('Showing all clusters');
+                        }
+                        break;
+                    
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                        const clusterId = parseInt(key);
+                        window.memoryPalace.jumpToCluster(clusterId);
+                        showNotification(`Jumped to Cluster ${clusterId}`);
+                        break;
+                    
+                    case '?':
+                        showKeyboardHelp();
+                        break;
+                }
+            });
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(102, 126, 234, 0.9);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 30px;
+                font-size: 16px;
+                font-weight: 500;
+                z-index: 1000;
+                animation: slideDown 0.3s ease;
+                backdrop-filter: blur(10px);
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+        
+        function addModeIndicator(mode, icon) {
+            const container = document.getElementById('mode-indicators');
+            const existing = document.querySelector(`[data-mode="${mode}"]`);
+            
+            if (!existing) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge';
+                badge.setAttribute('data-mode', mode);
+                badge.innerHTML = `${icon} ${mode}`;
+                container.appendChild(badge);
+            }
+        }
+        
+        function removeModeIndicator(mode) {
+            const badge = document.querySelector(`[data-mode="${mode}"]`);
+            if (badge) {
+                badge.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => badge.remove(), 300);
+            }
+        }
+        
+        function showKeyboardHelp() {
+            const modal = document.getElementById('shortcuts-modal');
+            const overlay = document.getElementById('overlay');
+            modal.classList.add('active');
+            overlay.classList.add('active');
+        }
+        
+        function setupEventListeners() {
+            // Upload zone
+            const uploadZone = document.getElementById('upload-zone');
+            const fileInput = document.getElementById('file-input');
+            
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                await handleFileUpload(files);
+            });
+            
+            fileInput.addEventListener('change', async (e) => {
+                await handleFileUpload(e.target.files);
+            });
+            
+            // Search
+            const searchInput = document.getElementById('search-input');
+            let searchTimeout;
+            
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(async () => {
+                    if (e.target.value.trim()) {
+                        await performSearch(e.target.value);
+                    } else {
+                        window.memoryPalace.clearHighlights();
+                    }
+                }, 500);
+            });
+            
+            // Controls
+            document.getElementById('reset-view-btn').addEventListener('click', () => {
+                window.memoryPalace.resetCamera();
+            });
+            
+            // Cluster view toggle button
+            document.getElementById('cluster-view-btn').addEventListener('click', () => {
+                const isClusterView = window.memoryPalace.toggleClusterViewMode();
+                const btn = document.getElementById('cluster-view-btn');
+                const btnText = btn.querySelector('span:last-child');
+                
+                if (isClusterView) {
+                    btnText.textContent = 'Document View';
+                    showNotification('Cluster View: Click clusters to explore documents');
+                } else {
+                    btnText.textContent = 'Cluster View';
+                    showNotification('Document View: All documents visible');
+                }
+            });
+            
+            // Connections toggle button - now opens settings panel
+            document.getElementById('connections-btn').addEventListener('click', () => {
+                const settingsPanel = document.getElementById('connection-settings');
+                const isOpen = settingsPanel.style.display === 'block';
+                
+                if (isOpen) {
+                    settingsPanel.style.display = 'none';
+                } else {
+                    settingsPanel.style.display = 'block';
+                }
+            });
+            
+            // Connection settings sliders
+            document.getElementById('threshold-slider').addEventListener('input', (e) => {
+                document.getElementById('threshold-value').textContent = e.target.value;
+            });
+            
+            document.getElementById('max-connections-slider').addEventListener('input', (e) => {
+                document.getElementById('max-connections-value').textContent = e.target.value;
+            });
+            
+            // Apply connection settings
+            document.getElementById('apply-connection-settings').addEventListener('click', () => {
+                const threshold = parseFloat(document.getElementById('threshold-slider').value);
+                const maxConnections = parseInt(document.getElementById('max-connections-slider').value);
+                
+                window.memoryPalace.setConnectionThreshold(threshold);
+                window.memoryPalace.setMaxConnections(maxConnections);
+                
+                showNotification(`Updated: Threshold ${threshold}, Max ${maxConnections} connections`);
+                document.getElementById('connection-settings').style.display = 'none';
+            });
+            
+            // Statistics button
+            document.getElementById('stats-btn').addEventListener('click', () => {
+                showStatistics();
+            });
+            
+            // Stats modal close button
+            document.getElementById('stats-close').addEventListener('click', () => {
+                document.getElementById('stats-modal').style.display = 'none';
+                document.getElementById('overlay').classList.remove('active');
+            });
+            
+            document.getElementById('clear-all-btn').addEventListener('click', async () => {
+                const confirmed = confirm('⚠️ This will permanently delete all documents from the collection. Are you sure?');
+                
+                if (confirmed) {
+                    showLoading(true);
+                    try {
+                        const response = await fetch('http://localhost:8000/api/clear-collection', {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            // Clear the 3D scene
+                            window.memoryPalace.clearDocuments();
+                            
+                            // Reset stats to 0 with animation
+                            const docElement = document.getElementById('doc-count');
+                            const clusterElement = document.getElementById('cluster-count');
+                            const connectionElement = document.getElementById('connection-count');
+                            
+                            animateCounter(docElement, 0, 500);
+                            animateCounter(clusterElement, 0, 500);
+                            animateCounter(connectionElement, 0, 500);
+                            
+                            showNotification('✅ Collection cleared successfully');
+                        } else {
+                            throw new Error('Failed to clear collection');
+                        }
+                    } catch (error) {
+                        console.error('Clear collection error:', error);
+                        showNotification('❌ Failed to clear collection');
+                    } finally {
+                        showLoading(false);
+                    }
+                }
+            });
+            
+            document.getElementById('theme-btn').addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const btn = document.getElementById('theme-btn');
+                const icon = btn.querySelector('.btn-icon');
+                const text = btn.querySelector('span:last-child');
+                
+                if (document.body.classList.contains('dark-mode')) {
+                    icon.textContent = '🌙';
+                    text.textContent = 'Dark';
+                    // We're in dark mode now
+                    if (window.memoryPalace && typeof window.memoryPalace.setTheme === 'function') {
+                        window.memoryPalace.setTheme('dark');
+                    }
+                } else {
+                    icon.textContent = '☀️';
+                    text.textContent = 'Light';
+                    // We're in light mode now
+                    if (window.memoryPalace && typeof window.memoryPalace.setTheme === 'function') {
+                        window.memoryPalace.setTheme('light');
+                    }
+                }
+            });
+            
+            // Help modal - show keyboard shortcuts
+            document.getElementById('help-btn').addEventListener('click', () => {
+                showKeyboardHelp();
+            });
+            
+            document.getElementById('help-close').addEventListener('click', () => {
+                document.getElementById('help-modal').classList.remove('active');
+                document.getElementById('overlay').classList.remove('active');
+            });
+            
+            document.getElementById('overlay').addEventListener('click', () => {
+                document.getElementById('help-modal').classList.remove('active');
+                document.getElementById('shortcuts-modal').classList.remove('active');
+                document.getElementById('stats-modal').style.display = 'none';
+                document.getElementById('overlay').classList.remove('active');
+            });
+            
+            // Shortcuts modal close button
+            document.getElementById('shortcuts-close').addEventListener('click', () => {
+                document.getElementById('shortcuts-modal').classList.remove('active');
+                document.getElementById('overlay').classList.remove('active');
+            });
+            
+            // Close shortcuts modal with ESC key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.getElementById('shortcuts-modal').classList.remove('active');
+                    document.getElementById('help-modal').classList.remove('active');
+                    document.getElementById('overlay').classList.remove('active');
+                }
+            });
+            
+            // Document panel
+            document.getElementById('close-panel').addEventListener('click', () => {
+                document.getElementById('document-panel').classList.remove('active');
+            });
+            
+            // Handle document clicks from 3D scene
+            window.addEventListener('documentClicked', (e) => {
+                showDocumentDetails(e.detail);
+            });
+        }
+
+        async function handleFileUpload(files) {
+            for (const file of files) {
+                showLoading(true);
+                try {
+                    const response = await API.uploadDocument(file);
+                    console.log('Uploaded:', response);
+                    
+                    // Reload all documents to get updated positions
+                    await loadDocuments();
+                } catch (error) {
+                    console.error('Upload failed:', error);
+                    alert(`Failed to upload ${file.name}: ${error.message}`);
+                } finally {
+                    showLoading(false);
+                }
+            }
+        }
+
+        async function performSearch(query) {
+            showLoading(true);
+            try {
+                const results = await API.searchDocuments(query);
+                console.log('Search results:', results);
+                
+                if (results.results && results.results.length > 0) {
+                    // Highlight search results
+                    const documentIds = results.results.map(r => r.document.id);
+                    window.memoryPalace.highlightDocuments(documentIds);
+                    
+                    // Focus on first result
+                    const firstDoc = results.results[0].document;
+                    if (firstDoc.position) {
+                        window.memoryPalace.focusOnPosition(firstDoc.position);
+                    }
+                    
+                    // Show notification
+                    showNotification(`Found ${results.results.length} matching document${results.results.length > 1 ? 's' : ''}`);
+                } else {
+                    showNotification('No matching documents found');
+                }
+            } catch (error) {
+                console.error('Search failed:', error);
+                showNotification('Search failed. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function showDocumentDetails(doc) {
+            const panel = document.getElementById('document-panel');
+            const title = document.getElementById('doc-title');
+            const info = document.getElementById('document-info');
+            
+            title.textContent = doc.metadata.title || doc.metadata.filename;
+            
+            // Start building the info HTML
+            let infoHTML = `
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">${doc.metadata.file_type}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Size</span>
+                    <span class="info-value">${formatFileSize(doc.metadata.file_size)}</span>
+                </div>`;
+            
+            // Get cluster info with keywords
+            if (doc.cluster >= 0) {
+                try {
+                    const clusters = await API.getClusters();
+                    const docCluster = clusters.clusters.find(c => c.cluster_id === doc.cluster);
+                    
+                    if (docCluster) {
+                        // Add cluster info with keywords
+                        infoHTML += `
+                        <div class="info-row">
+                            <span class="info-label">Cluster</span>
+                            <span class="info-value">Cluster ${doc.cluster}</span>
+                        </div>`;
+                        
+                        // Add cluster keywords section
+                        if (docCluster.label && docCluster.label !== 'General') {
+                            const keywords = docCluster.label.split(' ');
+                            const keywordBadges = keywords.map(keyword => 
+                                `<span style="display: inline-block; padding: 3px 8px; margin: 2px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 12px; font-size: 12px;">${keyword}</span>`
+                            ).join('');
+                            
+                            infoHTML += `
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 0, 0, 0.1);">
+                                <div class="info-label" style="margin-bottom: 8px;">Cluster Keywords</div>
+                                <div>${keywordBadges}</div>
+                                <div style="margin-top: 8px; color: #666; font-size: 12px;">
+                                    This cluster contains ${docCluster.size} documents with similar themes
+                                </div>
+                            </div>`;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to get cluster info:', e);
+                    infoHTML += `
+                    <div class="info-row">
+                        <span class="info-label">Cluster</span>
+                        <span class="info-value">Cluster ${doc.cluster}</span>
+                    </div>`;
+                }
+            } else {
+                infoHTML += `
+                <div class="info-row">
+                    <span class="info-label">Cluster</span>
+                    <span class="info-value">Unclustered</span>
+                </div>`;
+            }
+            
+            // Add position
+            infoHTML += `
+                <div class="info-row">
+                    <span class="info-label">Position</span>
+                    <span class="info-value">${formatPosition(doc.position)}</span>
+                </div>`;
+            
+            // Add tags if present
+            if (doc.metadata.tags && doc.metadata.tags.length > 0) {
+                infoHTML += `
+                <div class="info-row">
+                    <span class="info-label">Tags</span>
+                    <span class="info-value">${doc.metadata.tags.join(', ')}</span>
+                </div>`;
+            }
+            
+            // Get and display related documents
+            try {
+                const connections = await API.getDocumentConnections(doc.id, 0.6, 5);
+                if (connections.connections && connections.connections.length > 0) {
+                    const relatedList = connections.connections.map(c => {
+                        const strength = Math.round(c.score * 100);
+                        const strengthColor = strength > 80 ? '#43e97b' : strength > 60 ? '#667eea' : '#764ba2';
+                        return `
+                        <div style="padding: 5px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.05);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="flex: 1; font-size: 13px;">${c.metadata.title || c.metadata.filename}</span>
+                                <span style="padding: 2px 6px; background: ${strengthColor}; color: white; border-radius: 10px; font-size: 11px; margin-left: 8px;">${strength}%</span>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    infoHTML += `
+                    <div style="margin-top: 20px;">
+                        <div class="info-label" style="margin-bottom: 10px;">Related Documents</div>
+                        <div>${relatedList}</div>
+                    </div>`;
+                }
+            } catch (e) {
+                console.error('Failed to get connections:', e);
+            }
+            
+            // Add content preview if available
+            if (doc.content_preview) {
+                infoHTML += `
+                <div style="margin-top: 20px;">
+                    <div class="info-label" style="margin-bottom: 10px;">Preview</div>
+                    <div style="color: #666; font-size: 13px; line-height: 1.5;">
+                        ${doc.content_preview}
+                    </div>
+                </div>`;
+            }
+            
+            info.innerHTML = infoHTML;
+            panel.classList.add('active');
+        }
+
+        function animateCounter(element, target, duration = 1000) {
+            const start = parseInt(element.textContent) || 0;
+            const increment = (target - start) / (duration / 30);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+                    element.textContent = Math.floor(target);
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current);
+                }
+            }, 30);
+        }
+        
+        async function updateStats() {
+            try {
+                const stats = await API.getStatistics();
+                const docElement = document.getElementById('doc-count');
+                const clusterElement = document.getElementById('cluster-count');
+                
+                // Animate counters
+                animateCounter(docElement, stats.total_documents || 0);
+                animateCounter(clusterElement, stats.total_clusters || 0);
+                
+                // Get spatial layout for connections
+                const spatial = await API.getSpatialLayout();
+                const connectionElement = document.getElementById('connection-count');
+                animateCounter(connectionElement, spatial.connections ? spatial.connections.length : 0);
+            } catch (error) {
+                console.error('Failed to update stats:', error);
+            }
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('active');
+            } else {
+                loading.classList.remove('active');
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatPosition(position) {
+            if (!position) return 'Unknown';
+            return `(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`;
+        }
+        
+        async function showStatistics() {
+            showLoading(true);
+            try {
+                const stats = await API.getStatistics();
+                const content = document.getElementById('stats-content');
+                
+                // Format file size
+                const formatSize = (bytes) => {
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    if (bytes === 0) return '0 B';
+                    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                    return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + sizes[i];
+                };
+                
+                // Build stats HTML
+                let html = '';
+                
+                // Overview stats
+                html += `
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_documents}</div>
+                    <div class="stat-label">Total Documents</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total_clusters}</div>
+                    <div class="stat-label">Clusters</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value">${formatSize(stats.total_size)}</div>
+                    <div class="stat-label">Total Size</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-value">${formatSize(stats.average_document_size)}</div>
+                    <div class="stat-label">Avg Doc Size</div>
+                </div>`;
+                
+                // Connection stats
+                if (stats.connection_stats) {
+                    html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.connection_stats.total_connections.toLocaleString()}</div>
+                        <div class="stat-label">Total Connections</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.connection_stats.average_connections_per_doc}</div>
+                        <div class="stat-label">Avg Connections/Doc</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.connection_stats.isolated_documents}</div>
+                        <div class="stat-label">Isolated Documents</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-value">${(stats.connection_stats.connection_density * 100).toFixed(2)}%</div>
+                        <div class="stat-label">Connection Density</div>
+                    </div>`;
+                }
+                
+                // File type breakdown
+                html += `
+                <div class="stat-card" style="grid-column: span 2;">
+                    <h3 style="margin-top: 0;">📁 File Types</h3>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">`;
+                
+                for (const [type, count] of Object.entries(stats.file_types)) {
+                    const icon = type === 'pdf' ? '📄' : type === 'image' ? '🖼️' : type === 'text' ? '📝' : type === 'audio' ? '🎵' : '📎';
+                    html += `
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px;">${icon}</div>
+                        <div style="font-size: 20px; font-weight: 600;">${count}</div>
+                        <div style="font-size: 12px; color: #666;">${type}</div>
+                    </div>`;
+                }
+                
+                html += `</div></div>`;
+                
+                // Most connected documents
+                if (stats.connection_stats && stats.connection_stats.most_connected_documents.length > 0) {
+                    html += `
+                    <div class="stat-card" style="grid-column: span 2;">
+                        <h3 style="margin-top: 0;">🔗 Most Connected Documents</h3>
+                        <div style="max-height: 200px; overflow-y: auto;">`;
+                    
+                    stats.connection_stats.most_connected_documents.forEach((doc, i) => {
+                        html += `
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                            <span>${i + 1}. ${doc.title}</span>
+                            <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                ${doc.connections} connections
+                            </span>
+                        </div>`;
+                    });
+                    
+                    html += `</div></div>`;
+                }
+                
+                content.innerHTML = html;
+                
+                // Show modal
+                document.getElementById('stats-modal').style.display = 'block';
+                document.getElementById('overlay').classList.add('active');
+                
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+                showNotification('Failed to load statistics');
+            } finally {
+                showLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>

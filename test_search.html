@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Palace Search Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #2a2a2a;
+            border-left: 3px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Memory Palace Search Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>API Health Check</h2>
+        <button onclick="testHealth()">Test Backend Health</button>
+        <div id="health-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Document Stats</h2>
+        <button onclick="getStats()">Get Statistics</button>
+        <div id="stats-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Search Test</h2>
+        <input type="text" id="search-query" placeholder="Enter search query" value="energy">
+        <button onclick="testSearch()">Test Search</button>
+        <div id="search-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Document List</h2>
+        <button onclick="getDocuments()">Get Documents</button>
+        <div id="documents-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${isError ? 'error' : ''}">${content}</div>`;
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                showResult('health-result', `✅ Backend is healthy: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                showResult('health-result', `❌ Backend health check failed: ${error.message}`, true);
+            }
+        }
+        
+        async function getStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats`);
+                const data = await response.json();
+                showResult('stats-result', `📊 Statistics:<br>
+                    Total Documents: ${data.total_documents}<br>
+                    Total Connections: ${data.total_connections}<br>
+                    Clusters: ${data.total_clusters}<br>
+                    File Types: ${JSON.stringify(data.file_types)}`);
+            } catch (error) {
+                showResult('stats-result', `❌ Failed to get stats: ${error.message}`, true);
+            }
+        }
+        
+        async function testSearch() {
+            const query = document.getElementById('search-query').value;
+            if (!query) {
+                showResult('search-result', '⚠️ Please enter a search query', true);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/search`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        limit: 10,
+                        threshold: 0.3,
+                        include_content: true
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Search response:', data);
+                
+                if (data.results && data.results.length > 0) {
+                    let resultHTML = `✅ Found ${data.count} results for "${query}":<br><br>`;
+                    data.results.forEach((result, idx) => {
+                        resultHTML += `<strong>${idx + 1}. ${result.document.metadata.title || result.document.metadata.filename}</strong><br>`;
+                        resultHTML += `Score: ${result.score.toFixed(3)}<br>`;
+                        resultHTML += `ID: ${result.document.id}<br><br>`;
+                    });
+                    showResult('search-result', resultHTML);
+                } else {
+                    showResult('search-result', `⚠️ No results found for "${query}"`, true);
+                }
+            } catch (error) {
+                showResult('search-result', `❌ Search failed: ${error.message}`, true);
+            }
+        }
+        
+        async function getDocuments() {
+            try {
+                const response = await fetch(`${API_BASE}/api/documents?limit=10`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    let resultHTML = `📄 Showing ${data.length} documents:<br><br>`;
+                    data.forEach((doc, idx) => {
+                        resultHTML += `${idx + 1}. ${doc.metadata.title || doc.metadata.filename} (${doc.metadata.file_type})<br>`;
+                    });
+                    showResult('documents-result', resultHTML);
+                } else {
+                    showResult('documents-result', '⚠️ No documents found', true);
+                }
+            } catch (error) {
+                showResult('documents-result', `❌ Failed to get documents: ${error.message}`, true);
+            }
+        }
+        
+        // Auto-run health check on load
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

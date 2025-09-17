@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cluster Test</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial; background: #1a1a1a; color: white; }
+        #status { padding: 20px; background: #333; border-radius: 5px; margin-bottom: 20px; }
+        .test { margin: 10px 0; padding: 10px; background: #444; border-radius: 3px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Memory Palace Cluster View Test</h1>
+    <div id="status">Testing API connections...</div>
+    
+    <div class="test">
+        <button onclick="testHealth()">Test Health</button>
+        <button onclick="testDocuments()">Test Documents</button>
+        <button onclick="testClusters()">Test Clusters</button>
+        <button onclick="testSpatial()">Test Spatial</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const results = document.getElementById('results');
+        const status = document.getElementById('status');
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                addResult('Health Check', data, 'success');
+            } catch (error) {
+                addResult('Health Check', error.message, 'error');
+            }
+        }
+        
+        async function testDocuments() {
+            try {
+                status.textContent = 'Loading documents...';
+                const response = await fetch(`${API_URL}/api/documents/simple?limit=5`);
+                const data = await response.json();
+                
+                // Check cluster information
+                const clusters = {};
+                data.forEach(doc => {
+                    const clusterId = doc.cluster !== undefined ? doc.cluster : -1;
+                    if (!clusters[clusterId]) {
+                        clusters[clusterId] = [];
+                    }
+                    clusters[clusterId].push(doc.id);
+                });
+                
+                addResult('Documents', {
+                    total: data.length,
+                    clusters: Object.keys(clusters).map(id => ({
+                        id: id,
+                        count: clusters[id].length
+                    })),
+                    sample: data[0]
+                }, 'success');
+                status.textContent = `Loaded ${data.length} documents in ${Object.keys(clusters).length} clusters`;
+            } catch (error) {
+                addResult('Documents', error.message, 'error');
+                status.textContent = 'Failed to load documents';
+            }
+        }
+        
+        async function testClusters() {
+            try {
+                status.textContent = 'Loading clusters...';
+                const response = await fetch(`${API_URL}/api/clusters`);
+                const data = await response.json();
+                addResult('Clusters', data, 'success');
+                status.textContent = `Found ${data.clusters.length} clusters`;
+            } catch (error) {
+                addResult('Clusters', error.message, 'error');
+            }
+        }
+        
+        async function testSpatial() {
+            try {
+                status.textContent = 'Loading spatial layout (this may take a moment)...';
+                const response = await fetch(`${API_URL}/api/spatial?connection_threshold=0.8`);
+                const data = await response.json();
+                addResult('Spatial', {
+                    documents: data.documents.length,
+                    clusters: data.clusters.length,
+                    connections: data.connections.length
+                }, 'success');
+                status.textContent = `Spatial: ${data.documents.length} docs, ${data.clusters.length} clusters`;
+            } catch (error) {
+                addResult('Spatial', error.message, 'error');
+            }
+        }
+        
+        function addResult(test, data, type) {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = `
+                <h3>${test}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            results.appendChild(div);
+        }
+        
+        // Auto-test health on load
+        testHealth();
+    </script>
+</body>
+</html>

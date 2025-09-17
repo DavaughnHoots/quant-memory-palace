@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  # Simple frontend server only (since backend and Qdrant are already running)
+  frontend:
+    image: python:3.11-slim
+    container_name: memory-palace-frontend-simple
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: python -m http.server 3000
+    restart: unless-stopped
