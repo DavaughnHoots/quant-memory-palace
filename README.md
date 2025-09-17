@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
 
 ## 🎥 Demo Video
-[Watch the demo video](https://youtu.be/your-video-id)
+[Watch the demo video](https://youtu.be/KEE-9kuZdlQ)
 
 ## 🚀 Overview
 
